@@ -1,7 +1,6 @@
     import React, { useState, useEffect, useMemo } from 'react';
     import { useNavigate } from 'react-router-dom';
     import { UserButton, useUser } from '@clerk/clerk-react';
-    import logo from './assets/logo with name.png'
 
     // Custom hooks for better code organization
     const useTime = () => {
@@ -1099,7 +1098,7 @@
             <div className="p-8 border-b border-green-400/20">
             <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-r from-[#406246] to-[#2d4532] rounded-2xl flex items-center justify-center text-2xl shadow-lg">
-                <img src={logo} alt="" className='h-25px w-2px' />
+                🌿
                 </div>
                 <div>
                 <h1 className="text-2xl font-bold text-white">SafeSpace</h1>

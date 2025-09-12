@@ -3,6 +3,10 @@ import logo from './assets/logo with name.png'
 import bg from './assets/bg.png'
 import { useNavigate } from "react-router-dom"
 import { Link } from 'react-router-dom';
+import ocean from './assets/oceans.mp3'
+import rain from './assets/rain.mp3'
+import forest from './assets/forest.mp3'
+import fire from './assets/fire.mp3'
 
 const ReformedHeroSection = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -13,7 +17,35 @@ const ReformedHeroSection = () => {
   const navigate = useNavigate()   
   const [playingSound, setPlayingSound] = useState(null);
   const audioContextRef = useRef(null);
+  const [audio, setAudio] = useState(null);
   const oscillatorsRef = useRef({});
+
+  const playSound = (id) => {
+    // agar wahi sound chal raha hai toh pause kar do
+    if (playingSound === id) {
+      audio.pause();
+      setPlayingSound(null);
+      return;
+    }
+
+    // agar koi aur chal raha tha toh usse stop karo
+    if (audio) {
+      audio.pause();
+    }
+
+    // naya sound select karo
+    const selectedSound = sounds.find((s) => s.id === id);
+    const newAudio = new Audio(selectedSound.audio);
+    newAudio.play();
+
+    setAudio(newAudio);
+    setPlayingSound(id);
+
+    // jab audio khatam ho jaye toh reset
+    newAudio.onended = () => {
+      setPlayingSound(null);
+    };
+  };
 
   useEffect(() => {
     // Initialize Audio Context
@@ -165,7 +197,7 @@ const ReformedHeroSection = () => {
     forest: generateForestSound
   };
 
-  const playSound = async (soundType) => {
+  const playSounds = async (soundType) => {
     try {
       // Resume audio context if suspended
       if (audioContextRef.current.state === 'suspended') {
@@ -197,35 +229,39 @@ const ReformedHeroSection = () => {
     }
   };
 
-  const sounds = [
+   const sounds = [
     {
-      id: 'rain',
-      name: 'Rain Sounds',
-      icon: '🌧️',
-      description: 'Gentle rainfall',
-      color: 'from-blue-400 to-blue-600'
+      id: 1,
+      name: "Rain",
+      description: "Gentle raindrops falling",
+      icon: "🌧️",
+      color: "from-blue-400 to-blue-600",
+      audio: rain, 
     },
     {
-      id: 'ocean',
-      name: 'Ocean Waves',
-      icon: '🌊',
-      description: 'Calming sea waves',
-      color: 'from-cyan-400 to-blue-500'
+      id: 2,
+      name: "Forest",
+      description: "Birds and leaves",
+      icon: "🌲",
+      color: "from-green-400 to-green-600",
+      audio: forest,
     },
     {
-      id: 'birds',
-      name: 'Bird Songs',
-      icon: '🐦',
-      description: 'Peaceful chirping',
-      color: 'from-green-400 to-emerald-500'
+      id: 3,
+      name: "Ocean",
+      description: "Waves crashing on the shore",
+      icon: "🌊",
+      color: "from-cyan-400 to-blue-500",
+      audio: ocean,
     },
     {
-      id: 'forest',
-      name: 'Forest Ambience',
-      icon: '🌲',
-      description: 'Wind through trees',
-      color: 'from-emerald-400 to-green-600'
-    }
+      id: 4,
+      name: "Fireplace",
+      description: "Crackling cozy fire",
+      icon: "🔥",
+      color: "from-orange-400 to-red-500",
+      audio: fire,
+    },
   ];
 
   useEffect(() => {
@@ -234,10 +270,52 @@ const ReformedHeroSection = () => {
       const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
       return () => clearTimeout(t);
     } else {
-      const t2 = setTimeout(() => setShowSplash(false), 1000);
+      const t2 = setTimeout(() => setShowSplash(false), 700);
       return () => clearTimeout(t2);
     }
   }, [countdown, showSplash]);
+
+  // After splash, try to autoplay ambient rain and resume audio context; add fallbacks on user gesture
+  useEffect(() => {
+    if (showSplash) return;
+
+    const tryStartAudio = async () => {
+      try {
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+      } catch {}
+
+      try {
+        if (audioRef.current) {
+          // Ensure not muted for autoplay attempt
+          audioRef.current.muted = isMuted;
+          audioRef.current.volume = 0.35;
+          await audioRef.current.play();
+        }
+      } catch {}
+    };
+
+    // Immediate attempt
+    tryStartAudio();
+
+    // Listener to guarantee start on first interaction
+    const onInteract = () => {
+      tryStartAudio();
+      window.removeEventListener('pointerdown', onInteract);
+      window.removeEventListener('keydown', onInteract);
+      window.removeEventListener('touchstart', onInteract);
+    };
+    window.addEventListener('pointerdown', onInteract, { once: true });
+    window.addEventListener('keydown', onInteract, { once: true });
+    window.addEventListener('touchstart', onInteract, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', onInteract);
+      window.removeEventListener('keydown', onInteract);
+      window.removeEventListener('touchstart', onInteract);
+    };
+  }, [showSplash, isMuted]);
 
   const toggleMute = () => {
     const next = !isMuted;
@@ -248,11 +326,11 @@ const ReformedHeroSection = () => {
   };
 
   return (
-    <div id="home" className="relative w-full min-h-screen overflow-hidden">
+    <div id="home" className="relative w-full min-h-screen overflow-hidden scroll-smooth">
       {showSplash && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2d4532] text-white">
           <div className="text-center">
-            <div className="text-6xl font-bold mb-6">{countdown > 0 ? `${countdown}...` : 'Breathe'}</div>
+            <div className="text-6xl font-bold mb-6">{countdown > 0 ? `Breathe ${countdown}..` : ''}</div>
             <div className="text-sm opacity-80">Welcome to SafeSpace</div>
           </div>
         </div>
@@ -279,16 +357,16 @@ const ReformedHeroSection = () => {
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center space-x-8">
           <div className="flex space-x-6 xl:space-x-8">
-            <a href="#home" className="text-[#406246] hover:text-[#2d4532] text-lg font-medium transition-all duration-200 hover:underline decoration-2 underline-offset-4">
+            <a href="#home" className="text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium transition-all duration-200 px-3 py-2 rounded-lg">
               Home
             </a>
-            <a href="#about" className="text-[#406246] hover:text-[#2d4532] text-lg font-medium transition-all duration-200 hover:underline decoration-2 underline-offset-4">
+            <a href="#about" className="text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium transition-all duration-200 px-3 py-2 rounded-lg">
               About Us
             </a>
-            <a href="#services" className="text-[#406246] hover:text-[#2d4532] text-lg font-medium transition-all duration-200 hover:underline decoration-2 underline-offset-4">
-              ChatBot
+            <a href="#services" className="text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium transition-all duration-200 px-3 py-2 rounded-lg">
+              AI Psychologist 
             </a>
-            <a href="#contact" className="text-[#406246] hover:text-[#2d4532] text-lg font-medium transition-all duration-200 hover:underline decoration-2 underline-offset-4">
+            <a href="#contact" className="text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium transition-all duration-200 px-3 py-2 rounded-lg">
               Human Assistance
             </a>
           </div>
@@ -318,16 +396,16 @@ const ReformedHeroSection = () => {
       {isMenuOpen && (
         <div className="lg:hidden absolute top-20 left-4 right-4 z-30 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20">
           <div className="p-6 space-y-4">
-            <a href="#home" className="block text-[#406246] hover:text-[#2d4532] text-lg font-medium py-2 hover:bg-green-50 rounded-lg px-3 transition-colors duration-200">
+            <a href="#home" className="block text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium py-2 rounded-lg px-3 transition-colors duration-200">
               Home
             </a>
-            <a href="#about" className="block text-[#406246] hover:text-[#2d4532] text-lg font-medium py-2 hover:bg-green-50 rounded-lg px-3 transition-colors duration-200">
+            <a href="#about" className="block text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium py-2 rounded-lg px-3 transition-colors duration-200">
               About Us
             </a>
-            <a href="#services" className="block text-[#406246] hover:text-[#2d4532] text-lg font-medium py-2 hover:bg-green-50 rounded-lg px-3 transition-colors duration-200">
+            <a href="#services" className="block text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium py-2 rounded-lg px-3 transition-colors duration-200">
               ChatBot
             </a>
-            <a href="#contact" className="block text-[#406246] hover:text-[#2d4532] text-lg font-medium py-2 hover:bg-green-50 rounded-lg px-3 transition-colors duration-200">
+            <a href="#contact" className="block text-[#406246] hover:bg-[#406246] hover:text-[#f5f0de] text-lg font-medium py-2 rounded-lg px-3 transition-colors duration-200">
               Human Assistance
             </a>
             <button className="w-full bg-[#406246] hover:bg-[#2d4532] text-white px-6 py-3 rounded-2xl font-bold mt-4 transition-all duration-300">
@@ -341,7 +419,7 @@ const ReformedHeroSection = () => {
       <div className="relative z-10 flex items-center justify-center h-[90vh] px-4 md:px-8">
         <div className="text-center max-w-4xl mx-auto">
           {/* Main Heading */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-[#e9f3ec] leading-tight mb-8">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-[#527a59] leading-tight mb-8">
             <span className="block mb-2 transform hover:scale-105 transition-transform duration-300 mt-[-150px]">
               Turn Stress
             </span>
@@ -370,23 +448,10 @@ const ReformedHeroSection = () => {
         </svg>
       </div>
 
-      {/* Ambient Rain Sound Controls */}
-      <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
-        <button onClick={toggleMute} className="bg-[#406246] hover:bg-[#2d4532] text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-          {isMuted ? 'Unmute Rain' : 'Mute Rain'}
-        </button>
-        <audio
-          ref={audioRef}
-          src="https://cdn.pixabay.com/download/audio/2022/03/10/audio_c2e1d6425a.mp3?filename=rain-ambient-110997.mp3"
-          loop
-          autoPlay
-          muted={isMuted}
-        />
-      </div>
 
       {/* About Section */}
       <section id="about" className="relative z-10 bg-[#e9f3ec]/80 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-16">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
           <h2 className="text-3xl md:text-4xl font-bold text-[#2d4532] mb-4">About SafeSpace</h2>
           <p className="text-[#2d4532]/90 leading-relaxed">
             SafeSpace is your calm corner on the internet. Start with a short set of
@@ -399,10 +464,10 @@ const ReformedHeroSection = () => {
 
       {/* Services / ChatBot Section */}
       <section id="services" className="relative z-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-16 grid md:grid-cols-3 gap-6">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 grid md:grid-cols-3 gap-6">
           <div className="bg-white/80 rounded-2xl shadow-lg p-6 border border-white/40">
             <h3 className="text-xl font-semibold text-[#2d4532] mb-2">Assessments</h3>
-            <p className="text-[#2d4532]/80">Brief, evidence-aligned check-ins to understand how you’re feeling today.</p>
+            <p className="text-[#2d4532]/80">Brief, evidence-aligned check-ins to understand how you're feeling today.</p>
           </div>
           <div className="bg-white/80 rounded-2xl shadow-lg p-6 border border-white/40">
             <h3 className="text-xl font-semibold text-[#2d4532] mb-2">AI Psychologist</h3>
@@ -416,108 +481,116 @@ const ReformedHeroSection = () => {
       </section>
 
       {/* Human Assistance CTA */}
-      <section id="contact" className="relative z-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-16 flex flex-col md:flex-row items-center gap-8">
-          <div className="flex-1">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Prefer Human Assistance?</h2>
-            <p className="text-white/90 mb-6">Our licensed professionals are available. If your assessment suggests it, we’ll guide you to book a session.</p>
-            <Link to="/dashboard" className="inline-block bg-white text-[#2d4532] hover:bg-[#e9f3ec] px-6 py-3 rounded-2xl font-bold transition-all duration-300">
-              Book an Appointment
-            </Link>
-          </div>
+ <section className="py-12 bg-gradient-to-b from-green-50 to-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-[#25433c] mb-6">
+            🎵 Soothing Sounds
+          </h2>
+          <p className="text-xl text-[#406246]/80 max-w-2xl mx-auto leading-relaxed">
+            Immerse yourself in nature's calming symphony. Click on any sound to
+            create your perfect peaceful atmosphere.
+          </p>
         </div>
-      </section>
 
-      {/* Soothing sound section  */}
-      <section className="py-20 bg-gradient-to-b from-green-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Header */}
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-[#25433c] mb-6">
-              🎵 Soothing Sounds
-            </h2>
-            <p className="text-xl text-[#406246]/80 max-w-2xl mx-auto leading-relaxed">
-              Immerse yourself in nature's calming symphony. Click on any sound to create your perfect peaceful atmosphere.
+        {/* Sound Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {sounds.map((sound) => (
+            <div
+              key={sound.id}
+              className={`relative group cursor-pointer transform transition-all duration-300 hover:scale-105 ${
+                playingSound === sound.id ? "scale-105" : ""
+              }`}
+              onClick={() => playSound(sound.id)}
+            >
+              <div
+                className={`bg-gradient-to-br ${sound.color} p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 border-4 ${
+                  playingSound === sound.id
+                    ? "border-white animate-pulse shadow-2xl"
+                    : "border-transparent"
+                }`}
+              >
+                {/* Sound Icon */}
+                <div className="text-center mb-6">
+                  <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                    {sound.icon}
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    {sound.name}
+                  </h3>
+                  <p className="text-white/90 text-sm">{sound.description}</p>
+                </div>
+
+                {/* Play/Pause Indicator */}
+                <div className="flex justify-center">
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      playingSound === sound.id
+                        ? "bg-white text-gray-700"
+                        : "bg-white/20 text-white group-hover:bg-white/30"
+                    }`}
+                  >
+                    {playingSound === sound.id ? (
+                      <svg
+                        className="w-6 h-6"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-6 h-6 ml-1"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sound Waves Animation */}
+                {playingSound === sound.id && (
+                  <div className="absolute top-4 right-4">
+                    <div className="flex items-end space-x-1">
+                      <div className="w-1 bg-white rounded-full animate-pulse h-4"></div>
+                      <div
+                        className="w-1 bg-white rounded-full animate-pulse h-6"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-1 bg-white rounded-full animate-pulse h-3"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
+                      <div
+                        className="w-1 bg-white rounded-full animate-pulse h-5"
+                        style={{ animationDelay: "0.3s" }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Additional Info */}
+        <div className="text-center mt-16">
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 max-w-2xl mx-auto border border-white/30">
+            <h3 className="text-2xl font-bold text-[#25433c] mb-4">
+              🧘‍♀️ Perfect for Relaxation
+            </h3>
+            <p className="text-[#406246] leading-relaxed">
+              These nature sounds are scientifically proven to reduce stress,
+              improve focus, and promote better sleep. Create your own peaceful
+              sanctuary wherever you are.
             </p>
           </div>
-
-          {/* Sound Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {sounds.map((sound) => (
-              <div
-                key={sound.id}
-                className={`relative group cursor-pointer transform transition-all duration-300 hover:scale-105 ${
-                  playingSound === sound.id ? 'scale-105' : ''
-                }`}
-                onClick={() => playSound(sound.id)}
-              >
-                <div className={`bg-gradient-to-br ${sound.color} p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 border-4 ${
-                  playingSound === sound.id 
-                    ? 'border-white animate-pulse shadow-2xl' 
-                    : 'border-transparent'
-                }`}>
-                  {/* Sound Icon */}
-                  <div className="text-center mb-6">
-                    <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                      {sound.icon}
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">
-                      {sound.name}
-                    </h3>
-                    <p className="text-white/90 text-sm">
-                      {sound.description}
-                    </p>
-                  </div>
-
-                  {/* Play/Pause Indicator */}
-                  <div className="flex justify-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      playingSound === sound.id 
-                        ? 'bg-white text-gray-700' 
-                        : 'bg-white/20 text-white group-hover:bg-white/30'
-                    }`}>
-                      {playingSound === sound.id ? (
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                        </svg>
-                      ) : (
-                        <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sound Waves Animation */}
-                  {playingSound === sound.id && (
-                    <div className="absolute top-4 right-4">
-                      <div className="flex items-end space-x-1">
-                        <div className="w-1 bg-white rounded-full animate-pulse h-4"></div>
-                        <div className="w-1 bg-white rounded-full animate-pulse h-6" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-1 bg-white rounded-full animate-pulse h-3" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-1 bg-white rounded-full animate-pulse h-5" style={{animationDelay: '0.3s'}}></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Additional Info */}
-          <div className="text-center mt-16">
-            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 max-w-2xl mx-auto border border-white/30">
-              <h3 className="text-2xl font-bold text-[#25433c] mb-4">
-                🧘‍♀️ Perfect for Relaxation
-              </h3>
-              <p className="text-[#406246] leading-relaxed">
-                These nature sounds are scientifically proven to reduce stress, improve focus, and promote better sleep. 
-                Create your own peaceful sanctuary wherever you are.
-              </p>
-            </div>
-          </div>
         </div>
-      </section>
+      </div>
+    </section>
     </div>
   );
 };
